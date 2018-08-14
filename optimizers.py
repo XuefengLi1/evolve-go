@@ -1,5 +1,5 @@
 import numpy as np
-
+import pdb
 
 class Optimizer(object):
     def __init__(self, pi):
@@ -10,10 +10,11 @@ class Optimizer(object):
     def update(self, globalg):
         self.t += 1
         step = self._compute_step(globalg)
-        theta = self.pi.get_trainable_flat()
-        ratio = np.linalg.norm(step) / np.linalg.norm(theta)
-        self.pi.set_trainable_flat(theta + step)
-        return ratio
+        theta = self.pi.mu
+        # ratio = np.linalg.norm(step) / np.linalg.norm(theta)
+        self.pi.mu = theta + step
+
+        return step
 
     def _compute_step(self, globalg):
         raise NotImplementedError
@@ -28,6 +29,7 @@ class SGD(Optimizer):
     def _compute_step(self, globalg):
         self.v = self.momentum * self.v + (1. - self.momentum) * globalg
         step = -self.stepsize * self.v
+        # step = globalg
         return step
 
 

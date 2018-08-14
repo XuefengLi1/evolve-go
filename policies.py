@@ -1,13 +1,13 @@
 import numpy as np
 import tensorflow as tf
-
+import pdb
 class Policy:
-	def __init__(self, env, obs_shape, scope):
+	def __init__(self, env, scope):
 
 		self.num_actions = env.action_space.n
 		self.scope = scope
-		self.obs_shape = obs_shape
-		# self.build_model()
+		self.env = env
+		self.build_model()
 
 	def build_model(self):
 		with tf.device("/cpu:0"):
@@ -47,10 +47,10 @@ class Policy:
 		feed_dict = dict(zip(self.placeholders, data))
 		self.sess.run(self.assigns, feed_dict=feed_dict)
 
-
 		return data
 
-	def getDimensions(self):
+	@property	
+	def dimension(self):
 		return np.sum([np.prod(v.get_shape().as_list()) for v in tf.trainable_variables(scope=self.scope)])
 
 	def intprod(self,x):
@@ -62,9 +62,9 @@ class Policy:
 		self.saver.save(self.sess, path + str(iternum))
 
 	def build_graph(self):
-		self.observation = tf.placeholder(tf.float32, self.obs_shape, name='inputs')
-		out = tf.layers.dense(self.observation, 10, use_bias=False, activation=tf.nn.relu)
-		out = tf.layers.dense(out, 10, use_bias=False, activation=tf.nn.relu)
+		self.observation = tf.placeholder(tf.float32, [None] + list(self.env.observation_space.shape), name='inputs')
+		out = tf.layers.dense(self.observation, 100, use_bias=False, activation=tf.nn.tanh)
+		out = tf.layers.dense(out, 100, use_bias=False, activation=tf.nn.tanh)
 		self.actions = tf.layers.dense(out, self.num_actions, use_bias=True, activation=None,name='outputs')
 
 	def act(self, obv):
@@ -76,28 +76,31 @@ class Policy:
 		return result
 
 
-    def rollout(self, env, *, render=False, timestep_limit=None):
+	def rollout(self, sample, render=False, timestep_limit=None):
 
-        env_timestep_limit = env.spec.tags.get('wrapper_config.TimeLimit.max_episode_steps')
-        timestep_limit = env_timestep_limit if timestep_limit is None else min(timestep_limit, env_timestep_limit)
-        rews = []
-        t = 0
+		env = self.env
+		
+		self.setVariables(sample)
 
-        ob = env.reset()
-        for _ in range(timestep_limit):
-            ac = self.act(ob)
+		env_timestep_limit = env.spec.tags.get('wrapper_config.TimeLimit.max_episode_steps')
+		timestep_limit = env_timestep_limit if timestep_limit is None else min(timestep_limit, env_timestep_limit)
+		rews = []
+		t = 0
 
-            ob, rew, done, _ = env.step(ac)
-            rews.append(rew)
-            t += 1
-            if render:
-                env.render()
-            if done:
-                break
-        rews = np.array(rews, dtype=np.float32)
-        if save_obs:
-            return rews, t, np.array(obs)
-        return rews, t
+		ob = env.reset()
+		for _ in range(timestep_limit):
+			ac = self.act([ob])
+
+			ob, rew, done, _ = env.step(ac)
+			rews.append(rew)
+			t += 1
+			if render:
+				env.render()
+			if done:
+				break
+		rews = np.array(rews, dtype=np.float32)
+
+		return np.sum(rews,dtype=np.float32), t
 
 
 	# def virtualBN(tensor,file, size):
@@ -118,8 +121,8 @@ class Policy:
 
 class GoPolicy(Policy):
 
-	def __init__(self, env, obs_shape, scope):
-		super(GoPolicy,self).__init__(env, obs_shape, scope)
+	def __init__(self, env, scope):
+		super(GoPolicy,self).__init__(env, scope)
 		self.num_actions = env.action_space.n - 1
 		self.build_model()
 
@@ -134,7 +137,7 @@ class GoPolicy(Policy):
 
 			return board
 
-		self.observation = tf.placeholder(tf.float32, self.obs_shape, name='inputs')
+		self.observation = tf.placeholder(tf.float32, [None] + list(self.env.observation_space.shape), name='inputs')
 
 		board = pad(self.observation)
 
