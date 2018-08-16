@@ -34,7 +34,7 @@ class OpenES:
 							 learning_rate=0.01,           # learning rate for standard deviation
 							 popsize=1,                  # population size
 							 antithetic=False,             # whether to use antithetic sampling
-							 weight_decay=0.01):            # weight decay coefficient
+							 weight_decay=0.005):            # weight decay coefficient
 
 		self.num_params = num_params
 		self.sigma = sigma_init
@@ -89,7 +89,7 @@ class OpenES:
 						# change_mu = 1./(self.popsize*self.sigma)*np.dot(self.epsilon.T, reward)
 		
 		#self.mu += self.learning_rate * change_mu
-		gradient /= self.popsize*self.sigma
+		gradient /= (self.popsize*self.sigma)
 		return -gradient
 
 		# update_ratio = self.optimizer.update(-gradient)
