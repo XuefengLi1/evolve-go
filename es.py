@@ -37,7 +37,7 @@ class OpenES:
 							 weight_decay=0.005):            # weight decay coefficient
 
 		self.num_params = num_params
-		self.sigma = sigma_init
+		self.sigma = sigma_init * np.ones(self.num_params)
 		self.learning_rate = learning_rate
 
 		self.popsize = popsize
@@ -66,8 +66,8 @@ class OpenES:
 		# print(self.epsilon)
 		# if self.antithetic:
 		#   self.epsilon = np.concatenate([self.epsilon_half, - self.epsilon_half])
-
-		self.solutions = self.mu.reshape(1, self.num_params) + self.epsilon * self.sigma
+		# pdb.set_trace()
+		self.solutions = self.mu + self.epsilon * self.sigma
 
 		return self.solutions
 

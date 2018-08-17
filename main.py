@@ -38,6 +38,7 @@ def main(args):
 
     scope = 'net'
     env = gym.make(CONFIG[args.game]['game'])
+    env.continuous = CONFIG[args.game]['continuous_a'][0]
 
     policy = Policy(env, scope)
 
@@ -46,7 +47,7 @@ def main(args):
     dim = int(policy.dimension)
 
     es = OpenES(policy, dim,sigma_init=args.sig_init,
-        learning_rate=args.lr,popsize=args.pop_size,antithetic=args.antithetic,weight_decay=args.weight_decay)
+        learning_rate=args.lr,popsize=size,antithetic=args.antithetic,weight_decay=args.weight_decay)
 
     optimizer = SGD(es,es.learning_rate)
 
@@ -60,10 +61,10 @@ def main(args):
 
         sample = es.generate(noise_seed)
 
-        if rank==0 and i%10==0: 
-            result, t = policy.rollout_summary(sample[0])
-        else:
-            result, t = policy.rollout(sample[0])
+        # if rank==0 and i%10==0: 
+        #     result, t = policy.rollout_summary(sample)
+        # else:
+        result, t = policy.rollout(sample)
 
 
 
@@ -74,6 +75,10 @@ def main(args):
 
         step = optimizer.update(gradient - es.weight_decay * es.mu)
 
+        # if rank == 0 and results.max() > -800:
+        if rank == 0:
+            print(optimizer.t)
+            print(results)
         # if results.max() >= 199:
         #     if rank == 0:
         #         print(optimizer.t)
@@ -88,7 +93,7 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Evo Strategiser')
     parser.add_argument('--game', default=0, type=int, help='index of game')
-    parser.add_argument('--lr', default=0.01, type=float, help='learning rate')
+    parser.add_argument('--lr', default=0.1, type=float, help='learning rate')
     parser.add_argument('--pop_size', default=4, type=int, help='population_size')
     parser.add_argument('--antithetic', default=False, action="store_true", help='mirrored sampling')
     parser.add_argument('--sig_init', default=0.02, type=float, help='initial sigma')

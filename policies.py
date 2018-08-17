@@ -1,13 +1,13 @@
 import numpy as np
 import tensorflow as tf
 import tf_util as U
-
+import pdb
 class Policy:
 	def __init__(self, env, scope):
 
-		self.num_actions = env.action_space.n
 		self.scope = scope
 		self.env = env
+		self.num_actions = env.action_space.n if not env.continuous else env.action_space.shape[0]
 		self.build_model()
 
 	def build_model(self):
@@ -72,20 +72,36 @@ class Policy:
 	def build_graph(self):
 		self.observation = tf.placeholder(tf.float32, [None] + list(self.env.observation_space.shape), name='inputs')
 		# out = tf.layers.dense(self.observation, 10, use_bias=True, activation=tf.nn.tanh)
-		out = U.dense(self.observation, 10, 'layer1', weight_init=None, bias=False)
+		out = U.dense(self.observation, 3, 'layer1', weight_init=None, bias=False)
 		tf.summary.histogram('layer1_activations', out)
 		out = tf.nn.tanh(out)
 		# out = tf.layers.dense(out, 10, use_bias=True, activation=tf.nn.tanh)
-		out = U.dense(out, 10, 'layer2', weight_init=None, bias=False)
+		out = U.dense(out, 3, 'layer2', weight_init=None, bias=False)
 		tf.summary.histogram('layer2_activations', out)
 		out = tf.nn.tanh(out)
-		self.actions = tf.layers.dense(out, self.num_actions, use_bias=True, activation=None,name='outputs')
+
+		# out = U.dense(out, 3, 'layer3', weight_init=None, bias=False)
+		# tf.summary.histogram('layer3_activations', out)
+		# out = tf.nn.tanh(out)
+
+		activation = tf.nn.tanh if self.env.continuous else None
+
+		self.actions = tf.layers.dense(out, self.num_actions, use_bias=True, activation=activation,name='outputs')
 
 	def act(self, obv):
 
+		# def normalize(obv):
+		# 	high,low = (self.env.observation_space.high, self.env.observation_space.low)
+		# 	obv = (obv - (high - low)/2)/ ((high-low)/2)
+		# 	return obv
+
+		# obv = normalize(obv)
+
 		actions = self.sess.run(self.actions, feed_dict={self.observation:obv})
-		actions_pass = np.append(actions[0],0)
-		result = np.argmax(actions[0])
+
+		if self.env.continuous: scale = (self.env.action_space.high - self.env.action_space.low)/2 
+
+		result = actions[0] * scale if self.env.continuous else np.argmax(actions[0])
 
 		return result
 
@@ -94,8 +110,12 @@ class Policy:
 		actions, summary = self.sess.run([self.actions,self.merged], feed_dict={self.observation:obv})
 		self.writer.add_summary(summary)
 
-		actions_pass = np.append(actions[0],0)
-		result = np.argmax(actions[0])
+
+		actions = self.sess.run(self.actions, feed_dict={self.observation:obv})
+
+		if self.env.continuous: scale = (self.env.action_space.high - self.env.action_space.low)/2 
+
+		result = actions[0] * scale if self.env.continuous else np.argmax(actions[0])
 
 		return result 
 
