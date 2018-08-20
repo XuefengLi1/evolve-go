@@ -26,6 +26,7 @@ def compute_weight_decay(weight_decay, model_param_list):
 	model_param_grid = np.array(model_param_list)
 	return - weight_decay * np.mean(model_param_grid * model_param_grid, axis=1)
 
+def sign(idx, size): return -1. if idx >=size else 1.
 
 class OpenES:
 	''' Basic Version of OpenAI Evolution Strategies.'''
@@ -47,7 +48,7 @@ class OpenES:
 		#   assert (self.popsize % 2 == 0), "Population size must be even"
 		#   self.half_popsize = int(self.popsize / 2)
 
-		self.mu = np.zeros(self.num_params)
+		self.mu = np.random.randn(self.num_params) * 0.1
 
 
 		self.weight_decay = weight_decay
@@ -64,33 +65,47 @@ class OpenES:
 
 		self.epsilon = np.random.randn(self.num_params)
 		# print(self.epsilon)
-		# if self.antithetic:
-		#   self.epsilon = np.concatenate([self.epsilon_half, - self.epsilon_half])
-		# pdb.set_trace()
-		self.solutions = self.mu + self.epsilon * self.sigma
 
-		return self.solutions
+		# if self.antithetic:
+		self.epsilon = np.array([self.epsilon, - self.epsilon])
+		# pdb.set_trace()
+
+		self.samples = self.mu + self.epsilon * self.sigma
+
+		return self.samples
 
 	def gradient_cal(self, info):
 		# input must be a numpy float array
 		results, seeds = info
 
-		assert(len(results) == self.popsize), "Inconsistent reward_table size reported."
+		assert(len(results) == self.popsize*2), "Inconsistent reward_table size reported."
 		assert(len(seeds) == self.popsize), "Inconsistent reward_table size reported."
 		
 		reward = compute_centered_ranks(results)
-		# reward = results/200
+
+		size = len(results)
+		assert(size % 2 == 0), "Inconsistent result size for mirrored sampling reported."
+
 		idx = np.argsort(reward)[::-1]
 
 		gradient = np.zeros(self.num_params)
+
+		# Reconstruct epsilon
+		noise = []
+		for seed in seeds:
+			np.random.seed(seed)
+			noise.append(np.random.randn(self.num_params))
+
 		for ui, i in enumerate(idx):
-				np.random.seed(seeds[i])                # reconstruct noise using seed
-				gradient += reward[ui] * np.random.randn(self.num_params)
-						# change_mu = 1./(self.popsize*self.sigma)*np.dot(self.epsilon.T, reward)
-		
+				seed_index = i - (size/2) if i >= size/2 else i
+				seed_index = int(seed_index.item())
+
+				sign1 = sign(i, size/2)
+				gradient += reward[ui] * noise[seed_index] * sign1
+				# pdb.set_trace()
 		#self.mu += self.learning_rate * change_mu
-		gradient /= (self.popsize*self.sigma)
-		return -gradient
+		gradient /= (self.popsize*2*self.sigma)
+		return gradient
 
 		# update_ratio = self.optimizer.update(-gradient)
 

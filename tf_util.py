@@ -713,3 +713,18 @@ class RunningStat(object):
         self.sum[:] = init_mean * init_count
         self.sumsq[:] = (np.square(init_mean) + np.square(init_std)) * init_count
         self.count = init_count
+
+class Summarizer(object):
+    def __init__(self, arr, policy):
+        self.holder = tf.placeholder(dtype=arr.dtype, shape=arr.shape)
+        self.policy = policy
+        tf.summary.histogram("mu", self.holder)
+        self.t = 0
+
+    def add_summary(self,arr):
+        arr = self.policy.sess.run(self.policy.merged, feed_dict={self.holder:arr})
+        self.policy.writer.add_summary(arr, self.t)
+        self.t += 1
+
+
+

@@ -28,7 +28,7 @@ class SGD(Optimizer):
 
     def _compute_step(self, globalg):
         self.v = self.momentum * self.v + (1. - self.momentum) * globalg
-        step = -self.stepsize * self.v
+        step = self.stepsize * self.v
         # step = globalg
         return step
 

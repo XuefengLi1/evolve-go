@@ -72,12 +72,13 @@ class Policy:
 	def build_graph(self):
 		self.observation = tf.placeholder(tf.float32, [None] + list(self.env.observation_space.shape), name='inputs')
 		# out = tf.layers.dense(self.observation, 10, use_bias=True, activation=tf.nn.tanh)
-		out = U.dense(self.observation, 3, 'layer1', weight_init=None, bias=False)
-		tf.summary.histogram('layer1_activations', out)
+		out = U.dense(self.observation, 30, 'layer1', weight_init=None, bias=True)
+		# tf.summary.histogram('layer1_activations', out)
 		out = tf.nn.tanh(out)
-		# out = tf.layers.dense(out, 10, use_bias=True, activation=tf.nn.tanh)
-		out = U.dense(out, 3, 'layer2', weight_init=None, bias=False)
-		tf.summary.histogram('layer2_activations', out)
+		# out = tf.layers.dense(out, 20, use_bias=True, activation=tf.nn.tanh)
+		out = U.dense(out, 20, 'layer2', weight_init=None, bias=True)
+
+		# tf.summary.histogram('layer2_activations', out)
 		out = tf.nn.tanh(out)
 
 		# out = U.dense(out, 3, 'layer3', weight_init=None, bias=False)
@@ -131,7 +132,7 @@ class Policy:
 		t = 0
 
 		ob = env.reset()
-		for _ in range(timestep_limit):
+		for _ in range(700):
 			ac = self.act([ob])
 
 			ob, rew, done, _ = env.step(ac)

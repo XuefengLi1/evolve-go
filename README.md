@@ -9,3 +9,4 @@ Things to be done:
 4. Xavier initialization
 5. Co-evolution
 6. input normalization
+7. add tensorboard summary information
