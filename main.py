@@ -88,8 +88,8 @@ def main(args):
         comm.Allgather([mirrored_result, MPI.INT],[mirrored_results, MPI.INT])
         comm.Allgather([noise_seed, MPI.INT],[seeds, MPI.INT])
 
-        combined_results = np.concatenate([results, mirrored_results])
 
+        combined_results = np.concatenate([results, mirrored_results])
         gradient = es.gradient_cal((combined_results, seeds))
 
 

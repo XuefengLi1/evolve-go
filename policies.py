@@ -132,7 +132,7 @@ class Policy:
 		t = 0
 
 		ob = env.reset()
-		for _ in range(700):
+		for _ in range(timestep_limit):
 			ac = self.act([ob])
 
 			ob, rew, done, _ = env.step(ac)

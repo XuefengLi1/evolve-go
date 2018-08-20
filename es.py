@@ -26,6 +26,14 @@ def compute_weight_decay(weight_decay, model_param_list):
 	model_param_grid = np.array(model_param_list)
 	return - weight_decay * np.mean(model_param_grid * model_param_grid, axis=1)
 
+
+def shaped_fit(size):
+	base = size * 2  # *2 for mirrored sampling
+	rank = np.arange(1, base + 1)
+	util_ = np.maximum(0, np.log(base / 2 + 1) - np.log(rank))
+	utility = util_ / util_.sum() - 1 / base
+	return utility
+
 def sign(idx, size): return -1. if idx >=size else 1.
 
 class OpenES:
@@ -48,10 +56,12 @@ class OpenES:
 		#   assert (self.popsize % 2 == 0), "Population size must be even"
 		#   self.half_popsize = int(self.popsize / 2)
 
-		self.mu = np.random.randn(self.num_params) * 0.1
+		# self.mu = np.random.randn(self.num_params) * 0.1q
 
+		self.mu = np.zeros(self.num_params)
 
 		self.weight_decay = weight_decay
+		self.utilities = shaped_fit(popsize)
 
 		# choose optimizer
 		# self.optimizer = Adam(policy,learning_rate)
@@ -78,6 +88,10 @@ class OpenES:
 		# input must be a numpy float array
 		results, seeds = info
 
+		# results = np.array([ 9., 10., 10., 11.,  9., 10., 10.,  8.],dtype=np.float32)
+		#
+		# seeds = np.array([14598, 29149, 41506, 24126], dtype='i')
+
 		assert(len(results) == self.popsize*2), "Inconsistent reward_table size reported."
 		assert(len(seeds) == self.popsize), "Inconsistent reward_table size reported."
 		
@@ -101,10 +115,11 @@ class OpenES:
 				seed_index = int(seed_index.item())
 
 				sign1 = sign(i, size/2)
-				gradient += reward[ui] * noise[seed_index] * sign1
-				# pdb.set_trace()
+				gradient += self.utilities[ui] * noise[seed_index] * sign1
+
 		#self.mu += self.learning_rate * change_mu
 		gradient /= (self.popsize*2*self.sigma)
+
 		return gradient
 
 		# update_ratio = self.optimizer.update(-gradient)
