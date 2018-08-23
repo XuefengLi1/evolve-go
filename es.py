@@ -58,7 +58,7 @@ class OpenES:
 
 		# self.mu = np.random.randn(self.num_params) * 0.1q
 
-		self.mu = np.zeros(self.num_params)
+		self.mu = np.random.randn(self.num_params) * 0.01
 
 		self.weight_decay = weight_decay
 		self.utilities = shaped_fit(popsize)

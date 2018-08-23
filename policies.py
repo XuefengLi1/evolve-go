@@ -11,6 +11,7 @@ class Policy:
 		self.build_model()
 
 	def build_model(self):
+
 		with tf.device("/cpu:0"):
 			with tf.variable_scope(self.scope):
 
@@ -89,7 +90,9 @@ class Policy:
 
 		self.actions = tf.layers.dense(out, self.num_actions, use_bias=True, activation=activation,name='outputs')
 
-	def act(self, obv):
+	def act(self, obv, summary=False):
+
+		# if summary:
 
 		# def normalize(obv):
 		# 	high,low = (self.env.observation_space.high, self.env.observation_space.low)
