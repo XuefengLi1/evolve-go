@@ -285,14 +285,21 @@ def conv2d(x, num_filters, name, filter_size=(3, 3), stride=(1, 1), pad="SAME", 
 
         return tf.nn.conv2d(x, w, stride_shape, pad) + b
 
-def dense(x, size, name, weight_init=None, bias=True):
+def dense(x, size, name, weight_init=None, bias=True, activation=None,summary=False):
+
     w = tf.get_variable(name + "/w", [x.get_shape()[1], size], initializer=weight_init)
     ret = tf.matmul(x, w)
     if bias:
         b = tf.get_variable(name + "/b", [size], initializer=tf.zeros_initializer())
-        return ret + b
+        logits = ret + b
     else:
-        return ret
+        logits = ret
+
+    if summary: tf.summary.histogram(name + '/pre_activation', logits)
+
+    if activation == None:
+        return logits
+    return activation(logits)
 
 def wndense(x, size, name, init_scale=1.0):
     v = tf.get_variable(name + "/V", [int(x.get_shape()[1]), size],

@@ -3,12 +3,17 @@ import tensorflow as tf
 import tf_util as U
 import pdb
 class Policy:
-	def __init__(self, env, scope):
+	def __init__(self, env, scope, summary=False):
 
 		self.scope = scope
 		self.env = env
 		self.num_actions = env.action_space.n if not env.continuous else env.action_space.shape[0]
+		self.summary = summary
 		self.build_model()
+
+		if summary:
+			self.merged = tf.summary.merge_all()
+			self.writer = tf.summary.FileWriter('logs/', self.sess.graph)
 
 	def build_model(self):
 
@@ -18,6 +23,8 @@ class Policy:
 				self.build_graph()
 
 			self.all_variables = tf.trainable_variables(scope=self.scope)
+
+			self._getflat = U.GetFlat(self.all_variables)
 
 			self.placeholders = [tf.placeholder(v.value().dtype, v.get_shape().as_list()) for v in self.all_variables]
 
@@ -29,6 +36,7 @@ class Policy:
 
 
 			self.saver = tf.train.Saver() 
+
 
 
 
@@ -53,6 +61,9 @@ class Policy:
 
 		return data
 
+	def get_trainable_flat(self):
+		return self._getflat()
+
 	@property	
 	def dimension(self):
 		return np.sum([np.prod(v.get_shape().as_list()) for v in tf.trainable_variables(scope=self.scope)])
@@ -65,43 +76,27 @@ class Policy:
 		path = '../saved-models/checkpoints'
 		self.saver.save(self.sess, path + str(iternum))
 
-	# Summary operations for tensorboard
-	def summary(self):
-		self.merged = tf.summary.merge_all()
-		self.writer = tf.summary.FileWriter('logs/',self.sess.graph)
 
 	def build_graph(self):
 		self.observation = tf.placeholder(tf.float32, [None] + list(self.env.observation_space.shape), name='inputs')
-		# out = tf.layers.dense(self.observation, 10, use_bias=True, activation=tf.nn.tanh)
-		out = U.dense(self.observation, 30, 'layer1', weight_init=None, bias=True)
-		# tf.summary.histogram('layer1_activations', out)
-		out = tf.nn.tanh(out)
-		# out = tf.layers.dense(out, 20, use_bias=True, activation=tf.nn.tanh)
-		out = U.dense(out, 20, 'layer2', weight_init=None, bias=True)
 
-		# tf.summary.histogram('layer2_activations', out)
-		out = tf.nn.tanh(out)
-
-		# out = U.dense(out, 3, 'layer3', weight_init=None, bias=False)
-		# tf.summary.histogram('layer3_activations', out)
-		# out = tf.nn.tanh(out)
+		out = U.dense(self.observation, 30, 'layer1', weight_init=None, bias=True,activation=tf.nn.tanh, summary=self.summary)
+		out = U.dense(out, 20, 'layer2', weight_init=None, bias=True, activation=tf.nn.tanh, summary=self.summary)
 
 		activation = tf.nn.tanh if self.env.continuous else None
 
-		self.actions = tf.layers.dense(out, self.num_actions, use_bias=True, activation=activation,name='outputs')
+		self.actions = U.dense(out, self.num_actions, 'output', weight_init=None, bias=True, activation=activation, summary=self.summary)
+
+		# self.actions = tf.layers.dense(out, self.num_actions, use_bias=True, activation=activation,name='outputs')
 
 	def act(self, obv, summary=False):
 
-		# if summary:
+		if summary:
+			actions, summary = self.sess.run([self.actions, self.merged], feed_dict={self.observation: obv})
+			self.writer.add_summary(summary)
+		else:
+			actions = self.sess.run(self.actions, feed_dict={self.observation: obv})
 
-		# def normalize(obv):
-		# 	high,low = (self.env.observation_space.high, self.env.observation_space.low)
-		# 	obv = (obv - (high - low)/2)/ ((high-low)/2)
-		# 	return obv
-
-		# obv = normalize(obv)
-
-		actions = self.sess.run(self.actions, feed_dict={self.observation:obv})
 
 		if self.env.continuous: scale = (self.env.action_space.high - self.env.action_space.low)/2 
 
@@ -109,21 +104,8 @@ class Policy:
 
 		return result
 
-	def act_summary(self, obv):
 
-		actions, summary = self.sess.run([self.actions,self.merged], feed_dict={self.observation:obv})
-		self.writer.add_summary(summary)
-
-
-		actions = self.sess.run(self.actions, feed_dict={self.observation:obv})
-
-		if self.env.continuous: scale = (self.env.action_space.high - self.env.action_space.low)/2 
-
-		result = actions[0] * scale if self.env.continuous else np.argmax(actions[0])
-
-		return result 
-
-	def rollout(self, sample, render=False, timestep_limit=None):
+	def rollout(self, sample, render=False, timestep_limit=None, summary=False):
 
 		env = self.env
 		
@@ -136,33 +118,7 @@ class Policy:
 
 		ob = env.reset()
 		for _ in range(timestep_limit):
-			ac = self.act([ob])
-
-			ob, rew, done, _ = env.step(ac)
-			rews.append(rew)
-			t += 1
-			if render:
-				env.render()
-			if done:
-				break
-		rews = np.array(rews, dtype=np.float32)
-
-		return np.sum(rews,dtype=np.float32), t
-
-	def rollout_summary(self, sample, render=False, timestep_limit=None):
-
-		env = self.env
-		
-		self.setVariables(sample)
-
-		env_timestep_limit = env.spec.tags.get('wrapper_config.TimeLimit.max_episode_steps')
-		timestep_limit = env_timestep_limit if timestep_limit is None else min(timestep_limit, env_timestep_limit)
-		rews = []
-		t = 0
-
-		ob = env.reset()
-		for _ in range(timestep_limit):
-			ac = self.act_summary([ob])
+			ac = self.act([ob],summary)
 
 			ob, rew, done, _ = env.step(ac)
 			rews.append(rew)

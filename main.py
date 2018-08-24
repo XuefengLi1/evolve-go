@@ -48,7 +48,7 @@ def main(args):
     env.continuous = CONFIG[args.game]['continuous_a'][0]
 
     # Create the policy(network)
-    policy = Policy(env, scope)
+    policy = Policy(env, scope, summary=args.summary)
 
     # Get the number of variables
     dim = int(policy.dimension)
@@ -57,7 +57,7 @@ def main(args):
     es = OpenES(policy, dim,sigma_init=args.sig_init,learning_rate=args.lr,popsize=size,antithetic=args.antithetic,weight_decay=args.weight_decay)
 
     # Create the optimizers Adam/SGD with momentum
-    optimizer = Adam(es,es.learning_rate)
+    optimizer = SGD(es,es.learning_rate)
 
     # Create buffers for receiving results from other processes
     results = np.empty(size, dtype=np.float32)
@@ -66,12 +66,13 @@ def main(args):
 
     # Creat summary histogram for statistics
 
-    if rank == 0: summarizer = U.Summarizer(es.mu, policy)
-    if rank == 0: policy.summary()
+    # if rank == 0: summarizer = U.Summarizer(es.mu, policy)
+
 
 
     # running = 0
     repeat = 0
+
     for i in range(5000):
 
         # Random generate new seed for each iteration
@@ -96,7 +97,7 @@ def main(args):
         comm.Allgather([mirrored_result, MPI.INT],[mirrored_results, MPI.INT])
         comm.Allgather([noise_seed, MPI.INT],[seeds, MPI.INT])
 
-        # Conatenate mirrored sampling results
+        # Concatenate mirrored sampling results
         combined_results = np.concatenate([results, mirrored_results])
 
         # Calculate the updating gradient
@@ -106,9 +107,9 @@ def main(args):
         step = optimizer.update(gradient - es.weight_decay*es.mu)
 
         if rank == 0:
-            # result, t = policy.rollout(es.mu)
-            # print("iteration %d       reward of mean: %d        mean_reward: %d" %(i,np.asscalar(result),np.asscalar(combined_results.mean())))
-            print("iteration %d       reward of max: %d        mean_reward: %d" %(i,np.asscalar(combined_results.max()),np.asscalar(combined_results.mean())))
+            result, t = policy.rollout(es.mu, summary=args.summary)
+            print("iteration %d       reward of mean: %d        mean_reward: %d" %(i,np.asscalar(result),np.asscalar(combined_results.mean())))
+            # print("iteration %d       reward of max: %d        mean_reward: %d" %(i,np.asscalar(combined_results.max()),np.asscalar(combined_results.mean())))
 
             sys.stdout.flush()
 

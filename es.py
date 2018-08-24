@@ -50,21 +50,13 @@ class OpenES:
 		self.learning_rate = learning_rate
 
 		self.popsize = popsize
-		# self.antithetic = antithetic
 
-		# if self.antithetic:
-		#   assert (self.popsize % 2 == 0), "Population size must be even"
-		#   self.half_popsize = int(self.popsize / 2)
 
-		# self.mu = np.random.randn(self.num_params) * 0.1q
-
-		self.mu = np.random.randn(self.num_params) * 0.01
+		self.mu = policy.get_trainable_flat()
 
 		self.weight_decay = weight_decay
 		self.utilities = shaped_fit(popsize)
 
-		# choose optimizer
-		# self.optimizer = Adam(policy,learning_rate)
 
 
 	def generate(self, seed):
