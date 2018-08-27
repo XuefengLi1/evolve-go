@@ -1,6 +1,5 @@
 import numpy as np
 from optimizers import *
-import pdb
 
 def compute_ranks(x):
 	"""
@@ -56,7 +55,7 @@ class OpenES:
 
 		self.weight_decay = weight_decay
 		self.utilities = shaped_fit(popsize)
-
+		self.running_reward = 0
 
 
 	def generate(self, seed):

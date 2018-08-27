@@ -5,7 +5,6 @@ from policies import Policy
 from es import *
 from mpi4py import MPI
 import argparse, sys, os
-
 # tensorflow's warnings are too annoying
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
@@ -26,7 +25,7 @@ CONFIG = [
     dict(index=8,game="PongNoFrameskip-v0",continuous_a=[False], ep_max_step=20000, eval_threshold=21,atari=True),
     dict(index=9,game="InvertedPendulum-v1",continuous_a=[True,1000], ep_max_step=20000, eval_threshold=800,atari=False),
     dict(index=10,game="InvertedDoublePendulum-v1",continuous_a=[True,1000], ep_max_step=20000, eval_threshold=800,atari=False),
-    dict(index=11,game="Humanoid-v1",continuous_a=[True,0.4], ep_max_step=20000, eval_threshold=800,atari=False),
+    dict(index=11,game="Humanoid-v2",continuous_a=[True,0.4], ep_max_step=20000, eval_threshold=800,atari=False),
     dict(index=12,game="Swimmer-v1",continuous_a=[True,1], ep_max_step=20000, eval_threshold=800,atari=False),
     dict(index=13,game="Walker2d-v2",continuous_a=[True,1], ep_max_step=20000, eval_threshold=800,atari=False)
 ]
@@ -54,7 +53,7 @@ def main(args):
     dim = int(policy.dimension)
 
     #
-    es = OpenES(policy, dim,sigma_init=args.sig_init,learning_rate=args.lr,popsize=size,antithetic=args.antithetic,weight_decay=args.weight_decay)
+    es = OpenES(policy, dim,sigma_init=args.sig_init,learning_rate=args.lr,popsize=size,weight_decay=args.weight_decay)
 
     # Create the optimizers Adam/SGD with momentum
     optimizer = SGD(es,es.learning_rate)
@@ -64,16 +63,13 @@ def main(args):
     mirrored_results = np.empty(size, dtype=np.float32)
     seeds = np.empty(size, dtype='i')
 
-    # Creat summary histogram for statistics
-
-    # if rank == 0: summarizer = U.Summarizer(es.mu, policy)
 
 
 
     # running = 0
     repeat = 0
 
-    for i in range(5000):
+    for i in range(50000):
 
         # Random generate new seed for each iteration
         noise_seed = np.array(randint(0, 2 ** 16 -1),dtype='i')
@@ -125,7 +121,6 @@ if __name__ == '__main__':
     parser.add_argument('--game', default=0, type=int, help='index of game')
     parser.add_argument('--lr', default=0.1, type=float, help='learning rate')
     parser.add_argument('--pop_size', default=8, type=int, help='population_size')
-    parser.add_argument('--antithetic', default=False, action="store_true", help='mirrored sampling')
     parser.add_argument('--sig_init', default=0.02, type=float, help='initial sigma')
     parser.add_argument('--weight_decay', default=0.005, type=float, help='weight decay')
 
