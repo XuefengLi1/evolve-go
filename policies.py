@@ -1,6 +1,8 @@
 import numpy as np
 import tensorflow as tf
 import tf_util as U
+import random
+import re
 
 class Policy:
     def __init__(self, env, scope, summary=False):
@@ -148,10 +150,12 @@ class Policy:
 
 class GoPolicy(Policy):
 
-    def __init__(self, env, scope):
-        super(GoPolicy,self).__init__(env, scope)
+    def __init__(self, env, scope, summary=False):
+        super(GoPolicy,self).__init__(env, scope,summary=summary)
         self.num_actions = env.action_space.n - 1
+        self.env.observation_space.shape = [1, 3, 9, 9]
         self.build_model()
+        self.mean_pol = Policy(env, scope='mean_net', summary=summary)
 
     def build_graph(self):
 
@@ -194,3 +198,89 @@ class GoPolicy(Policy):
         result = np.argsort(actions_pass)
 
         return result
+
+    def rollout(self, sample, render=False, timestep_limit=None, summary=False):
+        # Swap first two channels and keep the empty position channel
+        def swap_obv(obv):
+            obv1 = obv[:2]
+            obv1 = obv1[::-1]
+            obv1 = np.append(obv1, [obv[-1]], axis=0)
+
+            return obv1
+
+        # Rescale observation with rescale size
+        def rescaling(obv, size):
+
+            obv = obv * size
+
+            return obv
+
+        # inner function
+        def single_trial(env, act_fns, render=False, random=False):
+            obv = env.reset()
+
+            # random moves
+            for move in rand_move:
+                obv, _, _, _ = env.step([move])
+            player = 0
+            # rescale
+            # rescale_size = 4
+            # obv = rescaling(obv, rescaling)
+
+            for i in range(162):
+                if render:
+                    env.render()
+
+                # champ or random turn
+                if player == 1:
+                    if random:
+                        actions = np.arange(82)
+                        np.random.shuffle(actions)
+                    else:
+
+                        # swap the channel
+                        actions = act_fns[player]([swap_obv(obv)])[::-1]
+
+                # mutant turn
+                else:
+                    actions = act_fns[player]([obv])[::-1]
+
+                done = False
+
+                obv, reward, done, _ = env.step(actions)
+
+                # switch
+                player = (player + 1) % 2
+
+                result = reward
+
+                if done:
+                    break
+
+            balck_captures = re.findall(r'Captures B: ([0-9]*) W', str(env.state))[0]
+
+            white_captures = re.findall(r'W: ([0-9]*)', str(env.state))[0]
+
+            result = result + int(white_captures) - int(balck_captures)
+
+            return result
+
+        self.setVariables(sample)
+
+        # generate 4 random moves
+        rand_move = random.sample(range(0, 81), 4)
+
+        # mutant = black, champ = white
+        first_result = single_trial(self.env, [self.act, self.mean_pol.act], rand_move)
+
+        # reverse
+        second_result = single_trial(self.env, [self.mean_pol.act, self.act], rand_move)
+
+        # evaluation current policy against random policy
+        evaluation = single_trial(self.env, rand_move)
+
+        # reverse the sign as the result = white score - black score
+        result = second_result - first_result
+
+        # print('firts: ', first_result, ' second: ', second_result, ' final: ',result)
+        return result, -evaluation

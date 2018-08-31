@@ -8,7 +8,6 @@ import argparse, sys, os
 # tensorflow's warnings are too annoying
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
-
 comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
 size = comm.Get_size()
@@ -27,7 +26,8 @@ CONFIG = [
     dict(index=10,game="InvertedDoublePendulum-v1",continuous_a=[True,1000], ep_max_step=20000, eval_threshold=800,atari=False),
     dict(index=11,game="Humanoid-v2",continuous_a=[True,0.4], ep_max_step=20000, eval_threshold=800,atari=False),
     dict(index=12,game="Swimmer-v1",continuous_a=[True,1], ep_max_step=20000, eval_threshold=800,atari=False),
-    dict(index=13,game="Walker2d-v2",continuous_a=[True,1], ep_max_step=20000, eval_threshold=800,atari=False)
+    dict(index=13,game="Walker2d-v2",continuous_a=[True,1], ep_max_step=20000, eval_threshold=800,atari=False),
+    dict(index=14,game="Go9x9-v0",continuous_a=[False], ep_max_step=200, eval_threshold=-120,atari=False),
 ]
 
 
@@ -37,9 +37,8 @@ dic = {}
 
 def main(args):
 
-    # Specify the name scope for tensorflow graph
-    scope = 'net'
 
+    if args.game == '14': Go = True
     # Create Gym env
     env = gym.make(CONFIG[args.game]['game']).unwrapped
 
@@ -47,12 +46,11 @@ def main(args):
     env.continuous = CONFIG[args.game]['continuous_a'][0]
 
     # Create the policy(network)
-    policy = Policy(env, scope, summary=args.summary)
+    policy = Policy(env, scope='mutant_net', summary=args.summary)
 
     # Get the number of variables
     dim = int(policy.dimension)
 
-    #
     es = OpenES(policy, dim,sigma_init=args.sig_init,learning_rate=args.lr,popsize=size,weight_decay=args.weight_decay)
 
     # Create the optimizers Adam/SGD with momentum
@@ -85,7 +83,10 @@ def main(args):
         sample = es.generate(noise_seed)
 
         # Rollout
+        if Go: policy.mean_pol.setVariables(es.mu)
+
         result, t = policy.rollout(sample[0])
+
         mirrored_result, mirroed_t = policy.rollout(sample[1])
 
         # Send and receive all the results and seeds from/to other processes
@@ -103,9 +104,9 @@ def main(args):
         step = optimizer.update(gradient - es.weight_decay*es.mu)
 
         if rank == 0:
-            result, t = policy.rollout(es.mu, summary=args.summary)
-            print("iteration %d       reward of mean: %d        mean_reward: %d" %(i,np.asscalar(result),np.asscalar(combined_results.mean())))
-            # print("iteration %d       reward of max: %d        mean_reward: %d" %(i,np.asscalar(combined_results.max()),np.asscalar(combined_results.mean())))
+            # result, t = policy.rollout(es.mu, summary=args.summary)
+            # print("iteration %d       reward of mean: %d        mean_reward: %d" %(i,np.asscalar(result),np.asscalar(combined_results.mean())))
+            print("iteration %d       reward of max: %d        mean_reward: %d" %(i,np.asscalar(combined_results.max()),np.asscalar(combined_results.mean())))
 
             sys.stdout.flush()
 
