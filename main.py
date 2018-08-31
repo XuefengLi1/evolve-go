@@ -1,7 +1,7 @@
 import tf_util as U
 import gym
 from random import randint
-from policies import Policy
+from policies import Policy,GoPolicy
 from es import *
 from mpi4py import MPI
 import argparse, sys, os
@@ -38,15 +38,18 @@ dic = {}
 def main(args):
 
 
-    if args.game == '14': Go = True
     # Create Gym env
     env = gym.make(CONFIG[args.game]['game']).unwrapped
 
     # Set the continuity of the env
     env.continuous = CONFIG[args.game]['continuous_a'][0]
 
+
     # Create the policy(network)
-    policy = Policy(env, scope='mutant_net', summary=args.summary)
+    if args.game == '14':
+        policy = GoPolicy(env, scope='mutant_net', summary=args.summary)
+    else:
+        policy = Policy(env, scope='mutant_net', summary=args.summary)
 
     # Get the number of variables
     dim = int(policy.dimension)
