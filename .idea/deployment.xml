@@ -5,7 +5,7 @@
       <paths name="xuefeng@blairlab.cse.unsw.edu.au:22">
         <serverdata>
           <mappings>
-            <mapping deploy="/home/xuefeng/remote" local="$PROJECT_DIR$" />
+            <mapping deploy="/home/xuefeng/remote" local="$PROJECT_DIR$" web="/" />
           </mappings>
         </serverdata>
       </paths>
