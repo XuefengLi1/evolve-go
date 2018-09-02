@@ -285,6 +285,17 @@ def conv2d(x, num_filters, name, filter_size=(3, 3), stride=(1, 1), pad="SAME", 
 
         return tf.nn.conv2d(x, w, stride_shape, pad) + b
 
+def conv(x, filters, name, kernel_size=(3, 3), strides=(1, 1), padding="SAME",use_bias=True,activation=None,summary=False):
+
+    conv = tf.layers.conv2d(x, name=name, filters=filters, kernel_size=kernel_size, strides=strides, use_bias=use_bias, activation=None,padding=padding)
+
+    if summary: tf.summary.histogram(name + '/pre_activation', conv)
+
+    if activation != None: conv = activation(conv)
+
+    return conv
+
+
 def dense(x, size, name, weight_init=None, bias=True, activation=None,summary=False):
     w = tf.get_variable(name + "/w", [x.get_shape()[1], size], initializer=weight_init)
     ret = tf.matmul(x, w)

@@ -3,7 +3,7 @@ import tensorflow as tf
 import tf_util as U
 import random
 import re
-
+import pdb
 class Policy:
     def __init__(self, env, scope, summary=False):
 
@@ -128,9 +128,9 @@ class Policy:
                 env.render()
             if done:
                 break
-        rews = np.array(rews, dtype=np.float32)
+        rews = np.array(rews, dtype='i')
 
-        return np.sum(rews,dtype=np.float32), t
+        return np.sum(rews,dtype='i'), t
 
     # def virtualBN(tensor,file, size):
 
@@ -150,48 +150,54 @@ class Policy:
 
 class GoPolicy(Policy):
 
-    def __init__(self, env, scope, summary=False):
-        super(GoPolicy,self).__init__(env, scope,summary=summary)
+    def __init__(self, env, scope, mean_pol=False,summary=False):
+        self.obs_space = [1, 3, 9, 9]
         self.num_actions = env.action_space.n - 1
-        self.env.observation_space.shape = [1, 3, 9, 9]
-        self.build_model()
-        self.mean_pol = Policy(env, scope='mean_net', summary=summary)
+        super(GoPolicy,self).__init__(env, scope,summary=summary)
+        if mean_pol: self.mean_pol = GoPolicy(env, scope='mean_net', summary=False)
 
     def build_graph(self):
 
         def pad(board):
 
-            board = tf.pad(board,[[0,0],[0,0],[3,3],[3,3]],constant_values=0.0)
+            board = tf.pad(board,[[0,0],[0,0],[8,8],[8,8]],constant_values=0.0)
             edges = tf.constant(0,dtype=tf.float32,shape=[1,1,9,9])
-            edges = tf.pad(edges,[[0,0],[0,0],[3,3],[3,3]],constant_values=1.0)
+            edges = tf.pad(edges,[[0,0],[0,0],[8,8],[8,8]],constant_values=1.0)
             board = tf.concat([board,edges],1)
 
             return board
 
-        self.observation = tf.placeholder(tf.float32, [None] + list(self.env.observation_space.shape), name='inputs')
+        activation = tf.nn.relu
+        self.observation = tf.placeholder(tf.float32, self.obs_space, name='inputs')
 
         board = pad(self.observation)
+
 
         # Channel first to channel last as conv2d only support channel last
         board = tf.transpose(board,[0,2,3,1])
 
-        conv1 = tf.layers.conv2d(board, filters=16, kernel_size=5, strides=1, use_bias=True, activation=tf.nn.relu, padding="valid")
+        conv1 = U.conv(board, name='conv1',filters=16, kernel_size=7, strides=1, use_bias=True, activation=activation, padding="valid",summary=self.summary)
 
-        conv2 = tf.layers.conv2d(conv1, filters=16, kernel_size=5, strides=1,use_bias=True, activation=tf.nn.relu, padding="valid")
+        conv2 = U.conv(conv1,name='conv2',filters=16, kernel_size=5, strides=1,use_bias=True, activation=activation, padding="valid",summary=self.summary)
 
-        conv3 = tf.layers.conv2d(conv2, filters=16, kernel_size=5, strides=1,use_bias=True, activation=tf.nn.relu, padding="valid")
+        conv3 = U.conv(conv2, name='conv3', filters=16, kernel_size=5, strides=1,use_bias=True, activation=activation, padding="valid",summary=self.summary)
 
-        conv4 = tf.layers.conv2d(conv3, filters=16, kernel_size=5, strides=1,use_bias=True, activation=tf.nn.relu, padding="valid")
+        conv4 = U.conv(conv3, name='conv4', filters=16, kernel_size=3, strides=1, use_bias=True, activation=activation,padding="valid",summary=self.summary)
 
-        out = tf.layers.conv2d(conv4, filters=1, kernel_size=1, strides=1, use_bias=True, activation=None, padding="same")
+        out = U.conv(conv4, name='out',filters=1, kernel_size=1, strides=1, use_bias=True, activation=None, padding="valid",summary=self.summary)
 
         output = tf.layers.flatten(out)
 
-        self.actions = tf.identity(output, 'outputs')
+        #self.actions = tf.identity(output, 'outputs')
+        self.actions = output
 
-    def select_action(self, obv):
+    def act(self, obv,summary=False):
 
-        actions = self.sess.run(self.actions, feed_dict={self.observation:obv})
+        if summary and self.summary:
+            actions, summary = self.sess.run([self.actions, self.merged], feed_dict={self.observation: obv})
+            self.writer.add_summary(summary)
+        else:
+            actions = self.sess.run(self.actions, feed_dict={self.observation: obv})
 
         actions_pass = np.append(actions[0],0)
 
@@ -209,6 +215,7 @@ class GoPolicy(Policy):
             return obv1
 
         # Rescale observation with rescale size
+
         def rescaling(obv, size):
 
             obv = obv * size
@@ -216,9 +223,8 @@ class GoPolicy(Policy):
             return obv
 
         # inner function
-        def single_trial(env, act_fns, render=False, random=False):
+        def single_trial(env, act_fns, rand_move, render=False, random=False,summary=False):
             obv = env.reset()
-
             # random moves
             for move in rand_move:
                 obv, _, _, _ = env.step([move])
@@ -239,11 +245,11 @@ class GoPolicy(Policy):
                     else:
 
                         # swap the channel
-                        actions = act_fns[player]([swap_obv(obv)])[::-1]
+                        actions = act_fns[player]([swap_obv(obv)],summary=summary)[::-1]
 
                 # mutant turn
                 else:
-                    actions = act_fns[player]([obv])[::-1]
+                    actions = act_fns[player]([obv],summary=summary)[::-1]
 
                 done = False
 
@@ -271,16 +277,16 @@ class GoPolicy(Policy):
         rand_move = random.sample(range(0, 81), 4)
 
         # mutant = black, champ = white
-        first_result = single_trial(self.env, [self.act, self.mean_pol.act], rand_move)
+        first_result = single_trial(self.env, [self.act, self.mean_pol.act], rand_move,summary=summary)
 
         # reverse
-        second_result = single_trial(self.env, [self.mean_pol.act, self.act], rand_move)
+        second_result = single_trial(self.env, [self.mean_pol.act, self.act], rand_move,summary=summary)
 
         # evaluation current policy against random policy
-        evaluation = single_trial(self.env, rand_move)
+        evaluation = single_trial(self.env,[self.mean_pol.act, self.act], rand_move,random=True,summary=summary)
 
         # reverse the sign as the result = white score - black score
         result = second_result - first_result
 
         # print('firts: ', first_result, ' second: ', second_result, ' final: ',result)
-        return result, -evaluation
+        return np.array(result,dtype='i'), -evaluation

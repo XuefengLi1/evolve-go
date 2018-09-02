@@ -115,4 +115,8 @@ class OpenES:
 
 		# update_ratio = self.optimizer.update(-gradient)
 
+	def save(self):
+		np.savetxt('model/weights.out', self.mu, fmt='%.18e')
 
+	def load(self, file):
+		self.mu = np.loadtxt(file, np.float32)

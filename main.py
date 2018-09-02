@@ -4,7 +4,7 @@ from random import randint
 from policies import Policy,GoPolicy
 from es import *
 from mpi4py import MPI
-import argparse, sys, os
+import argparse, sys, os, pdb
 # tensorflow's warnings are too annoying
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
@@ -46,8 +46,8 @@ def main(args):
 
 
     # Create the policy(network)
-    if args.game == '14':
-        policy = GoPolicy(env, scope='mutant_net', summary=args.summary)
+    if args.game == 14:
+        policy = GoPolicy(env, scope='mutant_net', mean_pol=True,summary=args.summary)
     else:
         policy = Policy(env, scope='mutant_net', summary=args.summary)
 
@@ -56,15 +56,15 @@ def main(args):
 
     es = OpenES(policy, dim,sigma_init=args.sig_init,learning_rate=args.lr,popsize=size,weight_decay=args.weight_decay)
 
+    if args.load != None: es.load(args.load)
+
     # Create the optimizers Adam/SGD with momentum
     optimizer = SGD(es,es.learning_rate)
 
     # Create buffers for receiving results from other processes
-    results = np.empty(size, dtype=np.float32)
-    mirrored_results = np.empty(size, dtype=np.float32)
+    results = np.empty(size, dtype='i')
+    mirrored_results = np.empty(size, dtype='i')
     seeds = np.empty(size, dtype='i')
-
-
 
 
     # running = 0
@@ -86,11 +86,14 @@ def main(args):
         sample = es.generate(noise_seed)
 
         # Rollout
-        if Go: policy.mean_pol.setVariables(es.mu)
+        if args.game == 14:policy.mean_pol.setVariables(es.mu)
 
-        result, t = policy.rollout(sample[0])
+
+        summary = True if rank == 0 else False
+        result, t = policy.rollout(sample[0],summary=summary)
 
         mirrored_result, mirroed_t = policy.rollout(sample[1])
+
 
         # Send and receive all the results and seeds from/to other processes
         comm.Allgather([result, MPI.INT],[results, MPI.INT])
@@ -106,10 +109,16 @@ def main(args):
         # Update with optimizer
         step = optimizer.update(gradient - es.weight_decay*es.mu)
 
-        if rank == 0:
+
+        if args.save and rank == 0 and i % 100 == 0:
+            es.save()
+
+        if rank == 0 and i % 10 == 0:
             # result, t = policy.rollout(es.mu, summary=args.summary)
             # print("iteration %d       reward of mean: %d        mean_reward: %d" %(i,np.asscalar(result),np.asscalar(combined_results.mean())))
+            print(t)
             print("iteration %d       reward of max: %d        mean_reward: %d" %(i,np.asscalar(combined_results.max()),np.asscalar(combined_results.mean())))
+            # print("versus random: %d" % (t))
 
             sys.stdout.flush()
 
@@ -127,7 +136,10 @@ if __name__ == '__main__':
     parser.add_argument('--pop_size', default=8, type=int, help='population_size')
     parser.add_argument('--sig_init', default=0.02, type=float, help='initial sigma')
     parser.add_argument('--weight_decay', default=0.005, type=float, help='weight decay')
+    parser.add_argument('--load', default=None,type=str, help='Loaded model path')
 
+
+    parser.add_argument('--save', default=False, action="store_true", help='save model')
     parser.add_argument('--render', default=False, action="store_true", help='Whether the first worker (worker_index==0) should render the environment')
     parser.add_argument('--debug', default=False, action="store_true", help='Whether to use the debug log level')
     parser.add_argument('--summary', default=False, action="store_true", help='Whether to use tensorflow summary')
