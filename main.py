@@ -87,7 +87,7 @@ def main(args):
         # Rollout
         if args.game == 14:policy.mean_pol.setVariables(es.mu)
 
-        summary = True if rank == 0 else False
+        summary = True if rank == 0 and i % 100 == 0 else False
 
         result, t = policy.rollout(sample[0],summary=summary)
 
