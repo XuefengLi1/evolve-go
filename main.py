@@ -117,7 +117,6 @@ def main(args):
             print(t)
             if summary: monitor.add_summary(np.array(t))
             print("iteration %d       reward of max: %d        mean_reward: %d" %(i,np.asscalar(combined_results.max()),np.asscalar(combined_results.mean())))
-            # print("versus random: %d" % (t))
 
             sys.stdout.flush()
 
