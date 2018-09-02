@@ -44,19 +44,19 @@ def main(args):
     # Set the continuity of the env
     env.continuous = CONFIG[args.game]['continuous_a'][0]
 
+    summary = True if rank == 0 and args.summary else False
 
     # Create the policy(network)
-    if args.game == 14:
-        policy = GoPolicy(env, scope='mutant_net', mean_pol=True,summary=args.summary)
-    else:
-        policy = Policy(env, scope='mutant_net', summary=args.summary)
+    policy = GoPolicy(env, scope='mutant_net', mean_pol=True,summary=summary) if args.game == 14 else Policy(env, scope='mutant_net', summary=summary)
+
+    if summary: monitor = U.Summarizer(np.array(1,dtype='i'),policy)
 
     # Get the number of variables
     dim = int(policy.dimension)
 
     es = OpenES(policy, dim,sigma_init=args.sig_init,learning_rate=args.lr,popsize=size,weight_decay=args.weight_decay)
 
-    if args.load != None: es.load(args.load)
+    if args.load: es.load(args.load)
 
     # Create the optimizers Adam/SGD with momentum
     optimizer = SGD(es,es.learning_rate)
@@ -65,7 +65,6 @@ def main(args):
     results = np.empty(size, dtype='i')
     mirrored_results = np.empty(size, dtype='i')
     seeds = np.empty(size, dtype='i')
-
 
     # running = 0
     repeat = 0
@@ -88,12 +87,11 @@ def main(args):
         # Rollout
         if args.game == 14:policy.mean_pol.setVariables(es.mu)
 
-
         summary = True if rank == 0 else False
+
         result, t = policy.rollout(sample[0],summary=summary)
 
         mirrored_result, mirroed_t = policy.rollout(sample[1])
-
 
         # Send and receive all the results and seeds from/to other processes
         comm.Allgather([result, MPI.INT],[results, MPI.INT])
@@ -110,20 +108,21 @@ def main(args):
         step = optimizer.update(gradient - es.weight_decay*es.mu)
 
 
-        if args.save and rank == 0 and i % 100 == 0:
+        if args.save and rank == 0 and i % 1000 == 0:
             es.save()
 
         if rank == 0 and i % 10 == 0:
             # result, t = policy.rollout(es.mu, summary=args.summary)
             # print("iteration %d       reward of mean: %d        mean_reward: %d" %(i,np.asscalar(result),np.asscalar(combined_results.mean())))
             print(t)
+            if summary: monitor.add_summary(np.array(t))
             print("iteration %d       reward of max: %d        mean_reward: %d" %(i,np.asscalar(combined_results.max()),np.asscalar(combined_results.mean())))
             # print("versus random: %d" % (t))
 
             sys.stdout.flush()
 
 
-    print("number of repeated seed: ",repeat)
+    #print("number of repeated seed: ",repeat)
 
     env.close()
 

@@ -285,9 +285,10 @@ def conv2d(x, num_filters, name, filter_size=(3, 3), stride=(1, 1), pad="SAME", 
 
         return tf.nn.conv2d(x, w, stride_shape, pad) + b
 
+
 def conv(x, filters, name, kernel_size=(3, 3), strides=(1, 1), padding="SAME",use_bias=True,activation=None,summary=False):
 
-    conv = tf.layers.conv2d(x, name=name, filters=filters, kernel_size=kernel_size, strides=strides, use_bias=use_bias, activation=None,padding=padding)
+    conv = tf.layers.conv2d(x, name=name, filters=filters, kernel_size=kernel_size, kernel_initializer=tf.variance_scaling_initializer(), strides=strides, use_bias=use_bias, activation=None,padding=padding)
 
     if summary: tf.summary.histogram(name + '/pre_activation', conv)
 
@@ -735,11 +736,11 @@ class Summarizer(object):
     def __init__(self, arr, policy):
         self.holder = tf.placeholder(dtype=arr.dtype, shape=arr.shape)
         self.policy = policy
-        tf.summary.histogram("mu", self.holder)
+        self.summary = tf.summary.scalar("result", self.holder)
         self.t = 0
 
     def add_summary(self,arr):
-        arr = self.policy.sess.run(self.policy.merged, feed_dict={self.holder:arr})
+        arr = self.policy.sess.run(self.summary, feed_dict={self.holder:arr})
         self.policy.writer.add_summary(arr, self.t)
         self.t += 1
 

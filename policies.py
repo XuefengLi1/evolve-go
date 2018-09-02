@@ -82,11 +82,11 @@ class Policy:
         self.observation = tf.placeholder(tf.float32, [None] + list(self.env.observation_space.shape), name='inputs')
         # out = self.observation
 
-        out = U.dense(self.observation, 36, 'layer1', weight_init=tf.contrib.layers.xavier_initializer(), bias=True,activation=tf.nn.tanh, summary=self.summary)
-        out = U.dense(out, 36, 'layer2', weight_init=tf.contrib.layers.xavier_initializer(), bias=True, activation=tf.nn.tanh, summary=self.summary)
+        out = U.dense(self.observation, 36, 'layer1', weight_init=tf.variance_scaling_initializer(), bias=True,activation=tf.nn.tanh, summary=self.summary)
+        out = U.dense(out, 36, 'layer2', weight_init=tf.variance_scaling_initializer(), bias=True, activation=tf.nn.tanh, summary=self.summary)
         activation = tf.nn.tanh if self.env.continuous else None
 
-        self.actions = U.dense(out, self.num_actions, 'output', weight_init=tf.contrib.layers.xavier_initializer(), bias=True, activation=activation, summary=self.summary)
+        self.actions = U.dense(out, self.num_actions, 'output', weight_init=tf.variance_scaling_initializer(), bias=True, activation=activation, summary=self.summary)
 
         # self.actions = tf.layers.dense(out, self.num_actions, use_bias=True, activation=activation,name='outputs')
 
@@ -98,13 +98,11 @@ class Policy:
         else:
             actions = self.sess.run(self.actions, feed_dict={self.observation: obv})
 
-
         # if self.env.continuous: scale = (self.env.action_space.high - self.env.action_space.low)/2
 
         result = actions[0] if self.env.continuous else np.argmax(actions[0])
 
         return result
-
 
     def rollout(self, sample, render=False, timestep_limit=None, summary=False):
 
@@ -167,7 +165,9 @@ class GoPolicy(Policy):
 
             return board
 
-        activation = tf.nn.relu
+        # activation function
+        activation = tf.nn.selu
+
         self.observation = tf.placeholder(tf.float32, self.obs_space, name='inputs')
 
         board = pad(self.observation)
