@@ -1,4 +1,5 @@
 import numpy as np
+import pdb
 from optimizers import *
 
 def compute_ranks(x):
