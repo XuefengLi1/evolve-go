@@ -93,6 +93,7 @@ class Policy:
     def act(self, obv, summary=False):
 
         if summary:
+            pdb.set_trace()
             actions, summary = self.sess.run([self.actions, self.merged], feed_dict={self.observation: obv})
             self.writer.add_summary(summary)
         else:
@@ -116,7 +117,7 @@ class Policy:
         t = 0
 
         ob = env.reset()
-        for _ in range(500):
+        for _ in range(timestep_limit):
             ac = self.act([ob],summary)
             ob, rew, done, _ = env.step(ac)
             rews.append(rew)

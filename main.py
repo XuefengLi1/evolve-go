@@ -57,7 +57,7 @@ def main(args):
     # Get the number of variables
     dim = int(policy.dimension)
 
-    es = OpenES(policy, dim,sigma_init=args.sig_init,learning_rate=args.lr,popsize=size,weight_decay=args.weight_decay)
+    es = OpenES(policy, dim,sigma_init=args.sig_init,learning_rate=args.lr,popsize=size,weight_decay=args.weight_decay, fitness_shaping= args.f_shaping)
 
 
     if args.load:es.load(args.load)
@@ -145,9 +145,10 @@ if __name__ == '__main__':
     parser.add_argument('--pop_size', default=8, type=int, help='population_size')
     parser.add_argument('--sig_init', default=0.02, type=float, help='initial sigma')
     parser.add_argument('--weight_decay', default=0.005, type=float, help='weight decay')
+
     parser.add_argument('--load', default=None,type=str, help='Loaded model path')
 
-
+    parser.add_argument('--f_shaping', default=False, action="store_true", help='fitness shaping')
     parser.add_argument('--save', default=False, action="store_true", help='save model')
     parser.add_argument('--render', default=False, action="store_true", help='Whether the first worker (worker_index==0) should render the environment')
     parser.add_argument('--debug', default=False, action="store_true", help='Whether to use the debug log level')
