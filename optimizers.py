@@ -13,6 +13,7 @@ class Optimizer(object):
         # ratio = np.linalg.norm(step) / np.linalg.norm(theta)
         self.pi.mu = theta + step
 
+        assert (not np.isnan(np.sum(self.pi.mu)), "Nan in mu")
         return step
 
     def _compute_step(self, globalg):

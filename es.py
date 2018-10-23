@@ -87,10 +87,6 @@ class OpenES:
         # input must be a numpy float array
         results, seeds = info
 
-        # results = np.array([ 9., 10., 10., 11.,  9., 10., 10.,  8.],dtype=np.float32)
-        #
-        # seeds = np.array([14598, 29149, 41506, 24126], dtype='i')
-
         assert(len(results) == self.popsize*2), "Inconsistent reward_table size reported."
         assert(len(seeds) == self.popsize), "Inconsistent reward_table size reported."
 
@@ -112,37 +108,39 @@ class OpenES:
             np.random.seed(seed)
             noise.append(np.random.randn(self.num_params))
 
-        if self.fitness_shaping:
-            reward = compute_centered_ranks(results)
-            idx = np.argsort(reward)[::-1]
-            for ui, i in enumerate(idx):
-                seed_index = i - (size/2) if i >= size/2 else i
-                seed_index = int(seed_index.item())
+        # if not self.fitness_shaping:
+        reward = compute_centered_ranks(results)
+        idx = np.argsort(reward)[::-1]
+        for ui, i in enumerate(idx):
+            seed_index = i - (size/2) if i >= size/2 else i
+            seed_index = int(seed_index.item())
 
-                sign1 = sign(i, size/2)
-                gradient += self.utilities[ui] * noise[seed_index] * sign1
-        else:
+            sign1 = sign(i, size/2)
+            gradient += self.utilities[ui] * noise[seed_index] * sign1
+        # else:
+        #
+        #     f_mean, f_stdv = self.fitness_stat(results)
+        #
+        #     reward = (results - f_mean) / f_stdv
+        #
+        #     assert (True not in np.isnan(reward), "Nan in reward")
+        #
+        #     if f_stdv == 0.0: return 0
+        #
+        #     for ui, i in enumerate(reward):
+        #         seed_index = ui - (size/2) if ui >= size/2 else ui
+        #         seed_index = int(seed_index)
+        #
+        #         sign1 = sign(i, size/2)
+        #         if i <= 0: continue
+        #         gradient += i * noise[seed_index] * sign1
+        # self.mu += self.learning_rate * change_mu
 
-            f_mean, f_stdv = self.fitness_stat(results)
 
-            reward = (results - f_mean) / f_stdv
+        gradient /= self.popsize*2
+                     # *self.sigma)
 
-            assert (True not in np.isnan(reward), "Nan in reward")
-
-            if f_stdv == 0.0: return 0
-
-            for ui, i in enumerate(reward):
-                seed_index = ui - (size/2) if ui >= size/2 else ui
-                seed_index = int(seed_index)
-
-                sign1 = sign(i, size/2)
-                if i <= 0: continue
-                gradient += i * noise[seed_index] * sign1
-        #self.mu += self.learning_rate * change_mu
-
-
-        gradient /= (self.popsize*2*self.sigma)
-
+        assert (not np.isnan(np.sum(gradient)), "Nan in gradient")
         return gradient
 
     # update_ratio = self.optimizer.update(-gradient)

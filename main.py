@@ -1,6 +1,6 @@
 import tf_util as U
 import gym
-from random import randint
+import random
 from policies import Policy,GoPolicy
 from es import *
 from mpi4py import MPI
@@ -38,7 +38,6 @@ dic = {}
 
 def main(args):
 
-
     # Create Gym env
     env = gym.make(CONFIG[args.game]['game']).unwrapped
 
@@ -73,17 +72,21 @@ def main(args):
     # running = 0
     repeat = 0
 
-    for i in range(10000):
+    random.seed(os.getpid())
+
+    for i in range(100000):
 
         # Random generate new seed for each iteration
-        noise_seed = np.array(randint(0, 2 ** 16 -1),dtype='i')
+        noise_seed = np.array(random.randint(0, 2 ** 16 -1),dtype='i')
 
-        # sed = np.asscalar(noise_seed)
-        #
-        # if int(sed) in dic:
-        #     repeat += 1
-        # else:
-        #     dic[sed] = 1
+        sed = np.asscalar(noise_seed)
+
+        if int(sed) in dic:
+            if rank ==0:
+                print(sed)
+            repeat += 1
+        else:
+            dic[sed] = 1
 
         # Generate samples with the random seed
         sample = es.generate(noise_seed)
@@ -132,7 +135,7 @@ def main(args):
             sys.stdout.flush()
 
 
-    #print("number of repeated seed: ",repeat)
+    print("number of repeated seed: ",repeat)
 
     env.close()
 

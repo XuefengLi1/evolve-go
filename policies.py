@@ -82,8 +82,8 @@ class Policy:
         self.observation = tf.placeholder(tf.float32, [None] + list(self.env.observation_space.shape), name='inputs')
         # out = self.observation
 
-        out = U.dense(self.observation, 100, 'layer1', weight_init=tf.contrib.layers.xavier_initializer(), bias=True,activation=tf.nn.tanh, summary=self.summary)
-        out = U.dense(out, 100, 'layer2', weight_init=tf.contrib.layers.xavier_initializer(), bias=True, activation=tf.nn.tanh, summary=self.summary)
+        out = U.dense(self.observation, 2, 'layer1', weight_init=tf.contrib.layers.xavier_initializer(), bias=True,activation=tf.nn.tanh, summary=self.summary)
+        # out = U.dense(out, 2, 'layer2', weight_init=tf.contrib.layers.xavier_initializer(), bias=True, activation=tf.nn.tanh, summary=self.summary)
         activation = tf.nn.tanh if self.env.continuous else None
 
         self.actions = U.dense(out, self.num_actions, 'output', weight_init=tf.contrib.layers.xavier_initializer(), bias=True, activation=activation, summary=self.summary)
