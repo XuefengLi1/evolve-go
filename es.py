@@ -64,7 +64,7 @@ class OpenES:
 
         self.fstat_sum = 0.
         self.fstat_sumsq = 0.
-        self.fstat_count = 0.
+        self.fstat_count = 0
 
     def generate(self, seed):
         '''returns a list of parameters'''
@@ -108,39 +108,49 @@ class OpenES:
             np.random.seed(seed)
             noise.append(np.random.randn(self.num_params))
 
-        # if not self.fitness_shaping:
-        reward = compute_centered_ranks(results)
-        idx = np.argsort(reward)[::-1]
-        for ui, i in enumerate(idx):
-            seed_index = i - (size/2) if i >= size/2 else i
-            seed_index = int(seed_index.item())
+        if self.fitness_shaping:
+            rewards = compute_centered_ranks(results)
+            idx = np.argsort(rewards)[::-1]
+            for ui, i in enumerate(idx):
+                seed_index = i - (size/2) if i >= size/2 else i
+                seed_index = int(seed_index.item())
 
-            sign1 = sign(i, size/2)
-            gradient += self.utilities[ui] * noise[seed_index] * sign1
-        # else:
-        #
-        #     f_mean, f_stdv = self.fitness_stat(results)
-        #
-        #     reward = (results - f_mean) / f_stdv
-        #
-        #     assert (True not in np.isnan(reward), "Nan in reward")
-        #
-        #     if f_stdv == 0.0: return 0
-        #
-        #     for ui, i in enumerate(reward):
-        #         seed_index = ui - (size/2) if ui >= size/2 else ui
-        #         seed_index = int(seed_index)
-        #
-        #         sign1 = sign(i, size/2)
-        #         if i <= 0: continue
-        #         gradient += i * noise[seed_index] * sign1
+                sign1 = sign(i, size/2)
+                gradient += self.utilities[ui] * noise[seed_index] * sign1
+
+        else:
+            for ui, reward in enumerate(results):
+                seed_index = ui - (size/2) if ui >= size/2 else ui
+                seed_index = int(seed_index)
+
+                sign1 = sign(ui, size/2)
+
+                gradient += reward * noise[seed_index] * sign1
+
+            # f_mean, f_stdv = self.fitness_stat(results)
+            #
+            # if f_stdv == 0.0: return 0
+            #
+            # rewards = (results - f_mean) / f_stdv
+            #
+            # assert not np.isnan(np.sum(rewards)), "Nan in reward"
+            #
+            # if f_stdv == 0.0: return 0
+            #
+            # for ui, reward in enumerate(rewards):
+            #     seed_index = ui - (size/2) if ui >= size/2 else ui
+            #     seed_index = int(seed_index)
+            #
+            #     sign1 = sign(ui, size/2)
+            #
+            #     gradient += reward * noise[seed_index] * sign1
+
         # self.mu += self.learning_rate * change_mu
 
 
-        gradient /= self.popsize*2
-                     # *self.sigma)
+        gradient /= self.popsize*2*self.sigma
 
-        assert (not np.isnan(np.sum(gradient)), "Nan in gradient")
+        assert not np.isnan(np.sum(gradient)), "Nan in gradient"
         return gradient
 
     # update_ratio = self.optimizer.update(-gradient)
@@ -152,35 +162,26 @@ class OpenES:
         self.mu = np.loadtxt(file, np.float32)
 
     def fitness_stat(self,results):
+        # results = np.array([0.1,0.1,0.1,0.1])
         self.fstat_count += 1
-        # if (self.fstat_count <= STAT_RANGE):
-        #     self.fstat_sum = self.fstat_sum + results.mean()
-        #     self.fstat_sumsq = self.fstat_sumsq + results.mean() * results.mean()
-        # else:
-        #     self.fstat_sum = (1.0 - 1.0 / STAT_RANGE) * self.fstat_sum + results.mean()
-        #     self.fstat_sumsq = (1.0 - 1.0 / STAT_RANGE) * self.fstat_sumsq + results.mean() * results.mean()
-        #
-        # if (self.fstat_count <= STAT_RANGE):
-        #     f_mean = self.fstat_sum / self.fstat_count
-        #     f_var = self.fstat_sumsq / self.fstat_count - f_mean * f_mean
-        # else:
-        #     f_mean = self.fstat_sum / STAT_RANGE
-        #     f_var = self.fstat_sumsq / STAT_RANGE - f_mean * f_mean
-
-        #return f_mean,np.sqrt(f_var)
-
         if (self.fstat_count <= STAT_RANGE):
-            self.fstat_sum = self.fstat_sum + results.mean()
-            self.fstat_sumsq = self.fstat_sumsq + np.std(results)
+            self.fstat_sum += results.mean()
+            self.fstat_sumsq += results.mean()*results.mean()
         else:
             self.fstat_sum = (1.0 - 1.0 / STAT_RANGE) * self.fstat_sum + results.mean()
-            self.fstat_sumsq = (1.0 - 1.0 / STAT_RANGE) * self.fstat_sumsq + np.std(results)
+            self.fstat_sumsq = (1.0 - 1.0 / STAT_RANGE) * self.fstat_sumsq + results.mean()*results.mean()
 
         if (self.fstat_count <= STAT_RANGE):
             f_mean = self.fstat_sum / self.fstat_count
-            f_std = self.fstat_sumsq / self.fstat_count
+            f_var = self.fstat_sumsq / self.fstat_count - f_mean * f_mean
         else:
             f_mean = self.fstat_sum / STAT_RANGE
-            f_std = self.fstat_sumsq / STAT_RANGE
-
-        return f_mean, f_std
+            f_var = self.fstat_sumsq / STAT_RANGE - f_mean * f_mean
+        # print("---------------------")
+        # print(self.fstat_sum)
+        # print("sum variance: ",self.fstat_sumsq)
+        # print(f_mean)
+        # print("mean square: ",f_mean*f_mean)
+        # print(f_var)
+        assert np.min(f_var) >= 0, "Variance cannot be less than 0."
+        return f_mean, np.sqrt(f_var)

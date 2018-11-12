@@ -11,6 +11,7 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
+
 size = comm.Get_size()
 
 CONFIG = [
@@ -62,7 +63,7 @@ def main(args):
     if args.load:es.load(args.load)
 
     # Create the optimizers Adam/SGD with momentum
-    optimizer = SGD(es,es.learning_rate)
+    optimizer = Adam(es,es.learning_rate)
 
     # Create buffers for receiving results from other processes
     results = np.empty(size, dtype=np.float32)
@@ -75,18 +76,17 @@ def main(args):
     random.seed(os.getpid())
 
     for i in range(100000):
-
         # Random generate new seed for each iteration
         noise_seed = np.array(random.randint(0, 2 ** 16 -1),dtype='i')
 
         sed = np.asscalar(noise_seed)
 
-        if int(sed) in dic:
-            if rank ==0:
-                print(sed)
-            repeat += 1
-        else:
-            dic[sed] = 1
+        # if int(sed) in dic:
+        #     if rank ==0:
+        #         print(sed)
+        #     repeat += 1
+        # else:
+        #     dic[sed] = 1
 
         # Generate samples with the random seed
         sample = es.generate(noise_seed)
@@ -126,16 +126,16 @@ def main(args):
             # print("iteration %d       reward of mean: %d        mean_reward: %d" %(i,np.asscalar(result),np.asscalar(combined_results.mean())))
             max_r = combined_results.max()
             mean_r = combined_results.mean()
-            print(result)
+            # print(result)
             if summary:
                 monitor.add_summary(np.array(max_r))
                 monitor2.add_summary(np.array(mean_r))
             print("iteration %d       reward of max: %d        mean_reward: %d" %(i,np.asscalar(combined_results.max()),np.asscalar(combined_results.mean())))
 
             sys.stdout.flush()
+        # print(rank)
 
-
-    print("number of repeated seed: ",repeat)
+    # print("number of repeated seed: ",repeat)
 
     env.close()
 
