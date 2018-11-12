@@ -61,7 +61,7 @@ class OpenES:
         self.weight_decay = weight_decay
         self.utilities = shaped_fit(popsize)
         self.fitness_shaping = fitness_shaping
-
+        self.save_count = 0
         self.fstat_sum = 0.
         self.fstat_sumsq = 0.
         self.fstat_count = 0
@@ -153,8 +153,8 @@ class OpenES:
     # update_ratio = self.optimizer.update(-gradient)
 
     def save(self):
-        np.savetxt('model/weights.out', self.mu, fmt='%.18e')
-
+        np.savetxt('model/weights-' + str(self.save_count) + '.out', self.mu, fmt='%.18e')
+        self.save_count += 1
     def load(self, file):
         self.mu = np.loadtxt(file, np.float32)
 
