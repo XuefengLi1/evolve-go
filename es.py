@@ -99,7 +99,6 @@ class OpenES:
         assert(size % 2 == 0), "Inconsistent result size for mirrored sampling reported."
 
 
-
         gradient = np.zeros(self.num_params)
 
         # Reconstruct epsilon
@@ -126,7 +125,6 @@ class OpenES:
                 sign1 = sign(ui, size/2)
 
                 gradient += reward * noise[seed_index] * sign1
-
             # f_mean, f_stdv = self.fitness_stat(results)
             #
             # if f_stdv == 0.0: return 0
@@ -149,7 +147,6 @@ class OpenES:
 
 
         gradient /= self.popsize*2*self.sigma
-
         assert not np.isnan(np.sum(gradient)), "Nan in gradient"
         return gradient
 

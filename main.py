@@ -114,7 +114,6 @@ def main(args):
         # Update with optimizer
         step = optimizer.update(gradient - es.weight_decay*es.mu)
 
-
         if args.save and rank == 0 and i % 1000 == 0:
             es.save()
         #

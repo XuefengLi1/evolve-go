@@ -93,7 +93,6 @@ class Policy:
     def act(self, obv, summary=False):
 
         if summary:
-            pdb.set_trace()
             actions, summary = self.sess.run([self.actions, self.merged], feed_dict={self.observation: obv})
             self.writer.add_summary(summary)
         else:
@@ -289,4 +288,4 @@ class GoPolicy(Policy):
         result = second_result - first_result
 
         # print('firts: ', first_result, ' second: ', second_result, ' final: ',result)
-        return np.array(result,dtype='i'), -evaluation
+        return np.array(result,dtype=np.float32), -evaluation
