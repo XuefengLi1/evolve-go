@@ -282,7 +282,7 @@ class GoPolicy(Policy):
         second_result = single_trial(self.env, [self.mean_pol.act, self.act], rand_move,summary=summary)
 
         # evaluation current policy against random policy
-        evaluation = single_trial(self.env,[self.mean_pol.act, self.act], rand_move,random=True,summary=summary)
+        evaluation = single_trial(self.env,[self.mean_pol.act, self.act], rand_move,render=render,random=True,summary=summary)
 
         # reverse the sign as the result = white score - black score
         result = second_result - first_result

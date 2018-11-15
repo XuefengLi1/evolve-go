@@ -51,7 +51,7 @@ def main(args):
     policy = GoPolicy(env, scope='mutant_net', mean_pol=True,summary=summary) if args.game == 14 else Policy(env, scope='mutant_net', summary=summary)
 
     if summary:
-        monitor = U.Summarizer(np.array(1.,dtype=np.float32),policy)
+        monitor = U.Summarizer(np.array(1.,dtype=np.float32),policy,name='reward')
         monitor2 = U.Summarizer(np.array(1., dtype=np.float32), policy)
 
     # Get the number of variables
@@ -116,20 +116,16 @@ def main(args):
 
         if args.save and rank == 0 and i % 1000 == 0:
             es.save()
-        #
-        if rank == 0 and args.render:
-            policy.rollout(es.mu,render=args.render,summary=args.summary)
 
         if rank == 0 and i % 10 == 0:
-            # result, t = policy.rollout(es.mu, summary=args.summary)
-            # print("iteration %d       reward of mean: %d        mean_reward: %d" %(i,np.asscalar(result),np.asscalar(combined_results.mean())))
+            result, t = policy.rollout(es.mu,render=args.render,summary=args.summary)
             max_r = combined_results.max()
             mean_r = combined_results.mean()
             # print(result)
             if summary:
-                monitor.add_summary(np.array(max_r))
-                monitor2.add_summary(np.array(mean_r))
-            print("iteration %d       reward of max: %d        mean_reward: %d" %(i,np.asscalar(combined_results.max()),np.asscalar(combined_results.mean())))
+                monitor.add_summary(np.array(mean_r))
+                monitor2.add_summary(np.array(t))
+            print("iteration %d       reward of max: %d        mean_reward: %d       vs_random: %d" %(i,np.asscalar(combined_results.max()),np.asscalar(combined_results.mean()),t))
 
             sys.stdout.flush()
         # print(rank)

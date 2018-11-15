@@ -733,10 +733,10 @@ class RunningStat(object):
         self.count = init_count
 
 class Summarizer(object):
-    def __init__(self, arr, policy):
+    def __init__(self, arr, policy,name='scalar'):
         self.holder = tf.placeholder(dtype=arr.dtype, shape=arr.shape)
         self.policy = policy
-        self.summary = tf.summary.scalar("result", self.holder)
+        self.summary = tf.summary.scalar(name, self.holder)
         self.t = 0
 
     def add_summary(self,arr):
